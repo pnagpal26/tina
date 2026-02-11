@@ -1,10 +1,18 @@
 const { createClient } = require('@deepgram/sdk');
 
-const deepgram = createClient(process.env.DEEPGRAM_API_KEY);
+let deepgram = null;
+
+function getDeepgramClient() {
+  if (!deepgram) {
+    deepgram = createClient(process.env.DEEPGRAM_API_KEY);
+  }
+  return deepgram;
+}
 
 async function transcribeAudio(audioUrl) {
   try {
-    const { result, error } = await deepgram.listen.prerecorded.transcribeUrl(
+    const client = getDeepgramClient();
+    const { result, error } = await client.listen.prerecorded.transcribeUrl(
       { url: audioUrl },
       {
         model: 'nova-2',
