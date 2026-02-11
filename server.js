@@ -4,7 +4,7 @@ const express = require('express');
 const VoiceResponse = require('twilio').twiml.VoiceResponse;
 const { transcribeAudio } = require('./services/deepgram');
 const { getClaudeResponse } = require('./services/claude');
-const { textToSpeech } = require('./services/elevenlabs');
+// const { textToSpeech } = require('./services/elevenlabs'); // TODO: Add ElevenLabs later
 
 const app = express();
 const PORT = process.env.PORT || 3000;
