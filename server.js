@@ -2,7 +2,7 @@
 require('dotenv').config();
 const express = require('express');
 const VoiceResponse = require('twilio').twiml.VoiceResponse;
-const { transcribeAudio } = require('./services/deepgram');
+// const { transcribeAudio } = require('./services/deepgram'); // TODO: Add Deepgram later
 const { getClaudeResponse } = require('./services/claude');
 // const { textToSpeech } = require('./services/elevenlabs'); // TODO: Add ElevenLabs later
 
@@ -26,22 +26,23 @@ app.post('/voice', (req, res) => {
     voice: 'Polly.Joanna'
   }, 'Hi, thanks for calling about our rental listings. This call may be recorded for quality purposes. Which property are you calling about?');
 
-  // Record the caller's response
+  // Record the caller's response with Twilio transcription
   twiml.record({
     action: '/voice/process',
     method: 'POST',
     maxLength: 30,
     playBeep: false,
-    transcribe: false,
+    transcribe: true,
+    transcribeCallback: '/voice/transcription',
   });
 
   res.type('text/xml');
   res.send(twiml.toString());
 });
 
-app.post('/voice/process', async (req, res) => {
-  const { CallSid, RecordingUrl } = req.body;
-  const twiml = new VoiceResponse();
+// Handle transcription callback from Twilio
+app.post('/voice/transcription', async (req, res) => {
+  const { CallSid, TranscriptionText } = req.body;
 
   try {
     // Get or create conversation history
@@ -50,38 +51,58 @@ app.post('/voice/process', async (req, res) => {
     }
     const conversationHistory = conversations.get(CallSid);
 
-    // Step 1: Transcribe the recording with Deepgram
-    const transcript = await transcribeAudio(RecordingUrl);
-    console.log(`[${CallSid}] User said: ${transcript}`);
+    console.log(`[${CallSid}] User said: ${TranscriptionText}`);
 
-    // Step 2: Add to conversation history
+    // Add user message to conversation history
     conversationHistory.push({
       role: 'user',
-      content: transcript,
+      content: TranscriptionText,
     });
 
-    // Step 3: Get Claude's response
+    // Get Claude's response
     const aiResponse = await getClaudeResponse(conversationHistory);
     console.log(`[${CallSid}] TINA says: ${aiResponse}`);
 
-    // Step 4: Add AI response to history
+    // Add AI response to history
     conversationHistory.push({
       role: 'assistant',
       content: aiResponse,
     });
 
-    // Step 5: Speak the response (using Twilio's TTS for now, can switch to ElevenLabs)
-    twiml.say({
-      voice: 'Polly.Joanna'
-    }, aiResponse);
+  } catch (error) {
+    console.error('Error processing transcription:', error);
+  }
 
-    // Step 6: Continue the conversation
+  // Twilio expects 200 OK
+  res.sendStatus(200);
+});
+
+app.post('/voice/process', async (req, res) => {
+  const { CallSid } = req.body;
+  const twiml = new VoiceResponse();
+
+  try {
+    // Get conversation history
+    const conversationHistory = conversations.get(CallSid) || [];
+
+    // If we have a response from Claude, speak it
+    if (conversationHistory.length > 0) {
+      const lastMessage = conversationHistory[conversationHistory.length - 1];
+      if (lastMessage.role === 'assistant') {
+        twiml.say({
+          voice: 'Polly.Joanna'
+        }, lastMessage.content);
+      }
+    }
+
+    // Continue the conversation
     twiml.record({
       action: '/voice/process',
       method: 'POST',
       maxLength: 30,
       playBeep: false,
-      transcribe: false,
+      transcribe: true,
+      transcribeCallback: '/voice/transcription',
     });
 
   } catch (error) {
