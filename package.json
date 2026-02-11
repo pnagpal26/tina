@@ -1,0 +1,22 @@
+{
+  "name": "tina",
+  "version": "1.0.0",
+  "description": "TINA - AI Phone Answering Service",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.95.3",
+    "dotenv": "^17.2.4",
+    "express": "^5.2.1",
+    "twilio": "^5.12.1"
+  }
+}
