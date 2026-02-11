@@ -14,8 +14,11 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.74.0",
+    "@deepgram/sdk": "^4.11.3",
     "@supabase/supabase-js": "^2.95.3",
     "dotenv": "^17.2.4",
+    "elevenlabs": "^1.59.0",
     "express": "^5.2.1",
     "twilio": "^5.12.1"
   }
