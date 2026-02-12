@@ -53,21 +53,30 @@ app.post('/voice/transcription', async (req, res) => {
 
     console.log(`[${CallSid}] User said: ${TranscriptionText}`);
 
-    // Add user message to conversation history
-    conversationHistory.push({
-      role: 'user',
-      content: TranscriptionText,
-    });
+    // Check if transcription is empty or undefined
+    if (!TranscriptionText || TranscriptionText.trim() === '') {
+      console.log(`[${CallSid}] Empty transcription, prompting to repeat`);
+      conversationHistory.push({
+        role: 'assistant',
+        content: "Sorry, I didn't catch that. Could you please repeat?",
+      });
+    } else {
+      // Add user message to conversation history
+      conversationHistory.push({
+        role: 'user',
+        content: TranscriptionText,
+      });
 
-    // Get Claude's response
-    const aiResponse = await getClaudeResponse(conversationHistory);
-    console.log(`[${CallSid}] TINA says: ${aiResponse}`);
+      // Get Claude's response
+      const aiResponse = await getClaudeResponse(conversationHistory);
+      console.log(`[${CallSid}] TINA says: ${aiResponse}`);
 
-    // Add AI response to history
-    conversationHistory.push({
-      role: 'assistant',
-      content: aiResponse,
-    });
+      // Add AI response to history
+      conversationHistory.push({
+        role: 'assistant',
+        content: aiResponse,
+      });
+    }
 
   } catch (error) {
     console.error('Error processing transcription:', error);
