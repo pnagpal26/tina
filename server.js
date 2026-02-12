@@ -26,12 +26,16 @@ app.post('/voice', (req, res) => {
     voice: 'Polly.Joanna'
   }, 'Hi, thanks for calling about our rental listings. This call may be recorded for quality purposes. Which property are you calling about?');
 
+  // Wait 1 second before recording to ensure greeting completes
+  twiml.pause({ length: 1 });
+
   // Record the caller's response with Twilio transcription
   twiml.record({
     action: '/voice/process',
     method: 'POST',
     maxLength: 10,
-    timeout: 2,
+    timeout: 5,
+    speechTimeout: 3,
     playBeep: false,
     transcribe: true,
     transcribeCallback: '/voice/transcription',
@@ -43,7 +47,15 @@ app.post('/voice', (req, res) => {
 
 // Handle transcription callback from Twilio
 app.post('/voice/transcription', async (req, res) => {
-  const { CallSid, TranscriptionText } = req.body;
+  const { CallSid, TranscriptionText, RecordingUrl, RecordingSid } = req.body;
+
+  // LOG EVERYTHING Twilio sends for debugging
+  console.log(`[${CallSid}] Transcription callback received:`, {
+    TranscriptionText,
+    RecordingUrl,
+    RecordingSid,
+    fullBody: req.body
+  });
 
   try {
     // Get or create conversation history
@@ -110,7 +122,8 @@ app.post('/voice/process', async (req, res) => {
       action: '/voice/process',
       method: 'POST',
       maxLength: 10,
-      timeout: 2,
+      timeout: 5,
+      speechTimeout: 3,
       playBeep: false,
       transcribe: true,
       transcribeCallback: '/voice/transcription',
