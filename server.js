@@ -26,34 +26,27 @@ app.post('/voice', (req, res) => {
     voice: 'Polly.Joanna'
   }, 'Hi, thanks for calling about our rental listings. This call may be recorded for quality purposes. Which property are you calling about?');
 
-  // Wait 1 second before recording to ensure greeting completes
-  twiml.pause({ length: 1 });
-
-  // Record the caller's response with Twilio transcription
-  twiml.record({
+  // Use Gather for synchronous speech recognition
+  const gather = twiml.gather({
+    input: 'speech',
     action: '/voice/process',
     method: 'POST',
-    maxLength: 10,
-    timeout: 5,
     speechTimeout: 3,
-    playBeep: false,
-    transcribe: true,
-    transcribeCallback: '/voice/transcription',
+    timeout: 5,
+    language: 'en-US',
   });
 
   res.type('text/xml');
   res.send(twiml.toString());
 });
 
-// Handle transcription callback from Twilio
-app.post('/voice/transcription', async (req, res) => {
-  const { CallSid, TranscriptionText, RecordingUrl, RecordingSid } = req.body;
+app.post('/voice/process', async (req, res) => {
+  const { CallSid, SpeechResult } = req.body;
+  const twiml = new VoiceResponse();
 
-  // LOG EVERYTHING Twilio sends for debugging
-  console.log(`[${CallSid}] Transcription callback received:`, {
-    TranscriptionText,
-    RecordingUrl,
-    RecordingSid,
+  // LOG EVERYTHING for debugging
+  console.log(`[${CallSid}] Process callback received:`, {
+    SpeechResult,
     fullBody: req.body
   });
 
@@ -64,24 +57,23 @@ app.post('/voice/transcription', async (req, res) => {
     }
     const conversationHistory = conversations.get(CallSid);
 
-    console.log(`[${CallSid}] User said: ${TranscriptionText}`);
+    let aiResponse;
 
-    // Check if transcription is empty or undefined
-    if (!TranscriptionText || TranscriptionText.trim() === '') {
-      console.log(`[${CallSid}] Empty transcription, prompting to repeat`);
-      conversationHistory.push({
-        role: 'assistant',
-        content: "Sorry, I didn't catch that. Could you please repeat?",
-      });
+    // Check if speech was detected
+    if (!SpeechResult || SpeechResult.trim() === '') {
+      console.log(`[${CallSid}] No speech detected, prompting to repeat`);
+      aiResponse = "Sorry, I didn't catch that. Could you please repeat?";
     } else {
+      console.log(`[${CallSid}] User said: ${SpeechResult}`);
+
       // Add user message to conversation history
       conversationHistory.push({
         role: 'user',
-        content: TranscriptionText,
+        content: SpeechResult,
       });
 
       // Get Claude's response
-      const aiResponse = await getClaudeResponse(conversationHistory);
+      aiResponse = await getClaudeResponse(conversationHistory);
       console.log(`[${CallSid}] TINA says: ${aiResponse}`);
 
       // Add AI response to history
@@ -91,42 +83,19 @@ app.post('/voice/transcription', async (req, res) => {
       });
     }
 
-  } catch (error) {
-    console.error('Error processing transcription:', error);
-  }
+    // Speak the response
+    twiml.say({
+      voice: 'Polly.Joanna'
+    }, aiResponse);
 
-  // Twilio expects 200 OK
-  res.sendStatus(200);
-});
-
-app.post('/voice/process', async (req, res) => {
-  const { CallSid } = req.body;
-  const twiml = new VoiceResponse();
-
-  try {
-    // Get conversation history
-    const conversationHistory = conversations.get(CallSid) || [];
-
-    // If we have a response from Claude, speak it
-    if (conversationHistory.length > 0) {
-      const lastMessage = conversationHistory[conversationHistory.length - 1];
-      if (lastMessage.role === 'assistant') {
-        twiml.say({
-          voice: 'Polly.Joanna'
-        }, lastMessage.content);
-      }
-    }
-
-    // Continue the conversation
-    twiml.record({
+    // Continue the conversation with Gather
+    const gather = twiml.gather({
+      input: 'speech',
       action: '/voice/process',
       method: 'POST',
-      maxLength: 10,
-      timeout: 5,
       speechTimeout: 3,
-      playBeep: false,
-      transcribe: true,
-      transcribeCallback: '/voice/transcription',
+      timeout: 5,
+      language: 'en-US',
     });
 
   } catch (error) {
