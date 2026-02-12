@@ -30,7 +30,8 @@ app.post('/voice', (req, res) => {
   twiml.record({
     action: '/voice/process',
     method: 'POST',
-    maxLength: 30,
+    maxLength: 10,
+    timeout: 2,
     playBeep: false,
     transcribe: true,
     transcribeCallback: '/voice/transcription',
@@ -108,7 +109,8 @@ app.post('/voice/process', async (req, res) => {
     twiml.record({
       action: '/voice/process',
       method: 'POST',
-      maxLength: 30,
+      maxLength: 10,
+      timeout: 2,
       playBeep: false,
       transcribe: true,
       transcribeCallback: '/voice/transcription',

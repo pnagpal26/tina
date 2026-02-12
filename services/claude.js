@@ -6,7 +6,7 @@ const anthropic = new Anthropic({
 
 const SYSTEM_PROMPT = `You are TINA, an AI assistant for a rental property company. You help callers inquire about rental listings, schedule viewings, and answer questions about properties.
 
-Be helpful, professional, and concise in your responses. Keep answers brief since they will be spoken over the phone.
+CRITICAL: Keep ALL responses to 1-2 sentences maximum. You're speaking on the phone - be brief and conversational.
 
 When callers ask about properties, gather information about:
 - What type of property they're looking for (apartment, house, etc.)
@@ -21,7 +21,7 @@ async function getClaudeResponse(conversationHistory) {
   try {
     const response = await anthropic.messages.create({
       model: 'claude-sonnet-4-5-20250929',
-      max_tokens: 200,
+      max_tokens: 100,
       system: SYSTEM_PROMPT,
       messages: conversationHistory,
     });
